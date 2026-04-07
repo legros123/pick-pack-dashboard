@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pick & Pack · Suivi Performance</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root {
+  --navy: #0f172a;
+  --navy-light: #1e293b;
+  --navy-mid: #334155;
+  --teal: #0d9488;
+  --teal-glow: #14b8a6;
+  --amber: #f59e0b;
+  --red: #ef4444;
+  --green: #22c55e;
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --card-bg: rgba(30, 41, 59, 0.7);
+  --border: rgba(148, 163, 184, 0.12);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--navy);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: 
+    radial-gradient(ellipse at 20% 0%, rgba(13,148,136,0.15) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 100%, rgba(245,158,11,0.08) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.container { max-width: 480px; margin: 0 auto; padding: 16px; position: relative; z-index: 1; }
+
+/* ── HEADER ── */
+.header {
+  text-align: center;
+  padding: 24px 0 16px;
+}
+.header-logo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--teal);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+.header-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ── OPERATOR BADGE ── */
+.op-badge {
+  background: linear-gradient(135deg, var(--teal), #0891b2);
+  border-radius: 16px;
+  padding: 20px;
+  margin: 16px 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.op-badge::after {
+  content: '';
+  position: absolute;
+  top: -50%; right: -30%;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+.op-name {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+.op-mat {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+.op-score-big {
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1;
+  margin: 12px 0 4px;
+}
+.op-rank {
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+/* ── SCORE COLORS ── */
+.score-green { color: var(--green); }
+.score-amber { color: var(--amber); }
+.score-red { color: var(--red); }
+
+/* ── CARDS ── */
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+  backdrop-filter: blur(12px);
+}
+.card-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--teal);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+/* ── KPI GRID ── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.kpi {
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+.kpi-value {
+  font-size: 24px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
+.kpi-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ── BAR COMPARE ── */
+.bar-compare { margin: 8px 0; }
+.bar-row {
+  display: flex;
+  align-items: center;
+  margin: 8px 0;
+  gap: 10px;
+}
+.bar-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  width: 60px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.bar-track {
+  flex: 1;
+  height: 22px;
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+}
+.bar-fill-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.bar-perso { background: linear-gradient(90deg, var(--teal), var(--teal-glow)); }
+.bar-equipe { background: rgba(148, 163, 184, 0.3); }
+
+/* ── MONTHLY CHART ── */
+.month-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  height: 120px;
+  padding: 0 20px;
+  margin-top: 8px;
+}
+.month-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+}
+.month-bar {
+  width: 100%;
+  border-radius: 6px 6px 2px 2px;
+  min-height: 4px;
+  position: relative;
+  transition: height 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.month-bar-val {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.month-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+/* ── TEAM SECTION ── */
+.team-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.team-stat:last-child { border-bottom: none; }
+.team-stat-label { font-size: 13px; color: var(--text-muted); }
+.team-stat-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* ── FOOTER ── */
+.footer {
+  text-align: center;
+  padding: 20px 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+}
+
+/* ── ADMIN PAGE ── */
+.admin-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.admin-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  text-align: center;
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s;
+}
+.admin-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--teal);
+}
+.admin-card-name {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.admin-card-mat {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.admin-card canvas,
+.admin-card img {
+  border-radius: 6px;
+}
+.admin-card-score {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 8px;
+}
+.admin-card-rank {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── TABS ── */
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  background: rgba(15,23,42,0.5);
+  border-radius: 10px;
+  padding: 4px;
+}
+.tab {
+  flex: 1;
+  padding: 8px 4px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.2s;
+  border: none;
+  background: none;
+  font-family: inherit;
+}
+.tab.active {
+  background: var(--teal);
+  color: white;
+}
+
+/* ── BACK BUTTON ── */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--teal);
+  cursor: pointer;
+  margin-bottom: 12px;
+  border: none;
+  background: none;
+  font-family: inherit;
+  padding: 6px 0;
+}
+.back-btn:hover { color: var(--teal-glow); }
+
+/* ── PRINT STYLES ── */
+@media print {
+  body { background: white; color: black; }
+  body::before { display: none; }
+  .admin-card { break-inside: avoid; border: 2px solid #ccc; }
+  .admin-card-name { color: black; }
+  .back-btn, .no-print { display: none !important; }
+}
+
+/* ── ERROR / LOADING ── */
+.error-page {
+  text-align: center;
+  padding: 60px 20px;
+}
+.error-icon { font-size: 48px; margin-bottom: 16px; }
+.error-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.error-msg { font-size: 13px; color: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<div class="container" id="app"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// DONNÉES RÉELLES — Extraites du fichier SUIVI_PICK_PACK
+// Pour mettre à jour : remplacer ce bloc JSON par un nouvel export
+// ══════════════════════════════════════════════════════════════
+const DATA = {"team":{"avg_prod_j":463.8,"avg_quota":82.2,"avg_ppm":219.7,"avg_score":82.4,"total_err_dec":346,"total_err_ave":93,"nb_operateurs":18},"operators":[{"id":"QUERE","nom":"QUERE","prenom":"SARAH","matricule":"017","prod":13557,"heures":424.6,"hsup":10.2,"quota":51.5,"err_dec":2,"err_ave":2,"ppm":147.5,"jours":56,"prod_j":242.1,"score":59.6,"rang":17,"prod_jan":591,"prod_fev":913,"prod_mar":4083,"quota_jan":71.8,"quota_fev":55.6,"quota_mar":43.0},{"id":"GEORGES","nom":"GEORGES","prenom":"CHARLENE","matricule":"018","prod":17219,"heures":400.2,"hsup":15.4,"quota":63.8,"err_dec":3,"err_ave":5,"ppm":290.4,"jours":52,"prod_j":331.1,"score":67.5,"rang":16,"prod_jan":1699,"prod_fev":751,"prod_mar":9696,"quota_jan":102.4,"quota_fev":48.3,"quota_mar":56.1},{"id":"FLORENTIN","nom":"FLORENTIN","prenom":"PATRICE","matricule":"015","prod":10123,"heures":285.3,"hsup":11.5,"quota":58.1,"err_dec":3,"err_ave":3,"ppm":296.4,"jours":37,"prod_j":273.6,"score":62.8,"rang":18,"prod_jan":850,"prod_fev":0,"prod_mar":560,"quota_jan":62.3,"quota_fev":44.0,"quota_mar":0},{"id":"CLEMENT","nom":"CLEMENT","prenom":"NICOLAS","matricule":"139","prod":22887,"heures":411.3,"hsup":11.8,"quota":73.8,"err_dec":10,"err_ave":1,"ppm":43.7,"jours":54,"prod_j":423.8,"score":77.9,"rang":15,"prod_jan":2264,"prod_fev":1380,"prod_mar":14864,"quota_jan":74.5,"quota_fev":73.5,"quota_mar":73.3},{"id":"COLSON","nom":"COLSON","prenom":"STEPHANIE","matricule":"129","prod":27188,"heures":338.0,"hsup":0,"quota":101.0,"err_dec":26,"err_ave":9,"ppm":331.0,"jours":46,"prod_j":591.0,"score":94.4,"rang":6,"prod_jan":2727,"prod_fev":2934,"prod_mar":23894,"quota_jan":0,"quota_fev":98.4,"quota_mar":101.3},{"id":"CUNY","nom":"CUNY","prenom":"GREGORY","matricule":"132","prod":14369,"heures":197.1,"hsup":0.8,"quota":92.3,"err_dec":6,"err_ave":1,"ppm":69.6,"jours":31,"prod_j":463.5,"score":90.0,"rang":5,"prod_jan":0,"prod_fev":1061,"prod_mar":12370,"quota_jan":102.3,"quota_fev":102.2,"quota_mar":108.0},{"id":"ELAABDALLAOUI","nom":"ELAABDALLAOUI","prenom":"ICHRAK","matricule":"626","prod":20709,"heures":303.1,"hsup":3.4,"quota":74.5,"err_dec":19,"err_ave":8,"ppm":386.3,"jours":42,"prod_j":493.1,"score":76.4,"rang":13,"prod_jan":2084,"prod_fev":2363,"prod_mar":4388,"quota_jan":82.1,"quota_fev":84.0,"quota_mar":78.3},{"id":"FONTELO_BERTRAND","nom":"FONTELO_BERTRAND","prenom":"ELSA","matricule":"142","prod":9740,"heures":466.9,"hsup":11.8,"quota":83.0,"err_dec":5,"err_ave":5,"ppm":513.3,"jours":62,"prod_j":157.1,"score":74.8,"rang":14,"prod_jan":1809,"prod_fev":0,"prod_mar":8662,"quota_jan":98.7,"quota_fev":0,"quota_mar":103.4},{"id":"GASSERT","nom":"GASSERT","prenom":"FABIEN","matricule":"628","prod":33989,"heures":448.5,"hsup":10.1,"quota":84.7,"err_dec":16,"err_ave":9,"ppm":264.8,"jours":61,"prod_j":557.2,"score":85.8,"rang":9,"prod_jan":2821,"prod_fev":2585,"prod_mar":23702,"quota_jan":98.2,"quota_fev":92.8,"quota_mar":93.3},{"id":"GRANGER","nom":"GRANGER","prenom":"JEAN-PHILIPPE","matricule":"194","prod":30751,"heures":464.9,"hsup":13.5,"quota":83.5,"err_dec":31,"err_ave":6,"ppm":195.1,"jours":61,"prod_j":504.1,"score":84.0,"rang":11,"prod_jan":1702,"prod_fev":2920,"prod_mar":22657,"quota_jan":98.7,"quota_fev":88.3,"quota_mar":96.0},{"id":"MARTIN","nom":"MARTIN","prenom":"REGIS","matricule":"159","prod":25333,"heures":394.9,"hsup":2.8,"quota":73.1,"err_dec":18,"err_ave":1,"ppm":39.5,"jours":53,"prod_j":478.0,"score":79.2,"rang":12,"prod_jan":2514,"prod_fev":2425,"prod_mar":15466,"quota_jan":78.3,"quota_fev":81.8,"quota_mar":80.8},{"id":"MATHIEU","nom":"MATHIEU","prenom":"ALLAN","matricule":"112","prod":25739,"heures":378.2,"hsup":8.2,"quota":99.3,"err_dec":12,"err_ave":5,"ppm":194.3,"jours":50,"prod_j":514.8,"score":94.1,"rang":2,"prod_jan":3365,"prod_fev":1673,"prod_mar":9240,"quota_jan":112.2,"quota_fev":111.8,"quota_mar":110.2},{"id":"MESSAOUDI","nom":"MESSAOUDI","prenom":"KAHIN","matricule":"113","prod":29145,"heures":372.1,"hsup":9.5,"quota":95.4,"err_dec":3,"err_ave":0,"ppm":0,"jours":49,"prod_j":594.8,"score":94.8,"rang":1,"prod_jan":1150,"prod_fev":3093,"prod_mar":25116,"quota_jan":109.0,"quota_fev":110.2,"quota_mar":106.5},{"id":"MZOUGHI","nom":"MZOUGHI","prenom":"SHEHERAZADE","matricule":"617","prod":30885,"heures":381.3,"hsup":5.1,"quota":88.4,"err_dec":46,"err_ave":6,"ppm":194.3,"jours":53,"prod_j":582.7,"score":88.8,"rang":7,"prod_jan":2761,"prod_fev":2952,"prod_mar":23994,"quota_jan":101.0,"quota_fev":96.8,"quota_mar":100.8},{"id":"PETIT","nom":"PETIT","prenom":"MAX","matricule":"670","prod":28656,"heures":395.0,"hsup":4.1,"quota":80.5,"err_dec":18,"err_ave":1,"ppm":34.9,"jours":55,"prod_j":521.0,"score":84.1,"rang":10,"prod_jan":2646,"prod_fev":2673,"prod_mar":19782,"quota_jan":91.6,"quota_fev":85.2,"quota_mar":86.5},{"id":"SCHREINER","nom":"SCHREINER","prenom":"MARINE","matricule":"115","prod":27849,"heures":412.6,"hsup":13.0,"quota":95.6,"err_dec":19,"err_ave":11,"ppm":395.0,"jours":54,"prod_j":515.7,"score":91.2,"rang":4,"prod_jan":2753,"prod_fev":3447,"prod_mar":22545,"quota_jan":95.9,"quota_fev":110.4,"quota_mar":112.5},{"id":"STARCK","nom":"STARCK","prenom":"NICOLAS","matricule":"126","prod":30161,"heures":422.0,"hsup":15.0,"quota":96.6,"err_dec":26,"err_ave":8,"ppm":265.2,"jours":55,"prod_j":548.4,"score":91.7,"rang":3,"prod_jan":1510,"prod_fev":0,"prod_mar":22013,"quota_jan":109.5,"quota_fev":101.9,"quota_mar":121.2},{"id":"STERCKY","nom":"STERCKY","prenom":"FRANCK","matricule":"149","prod":27289,"heures":363.4,"hsup":5.5,"quota":84.9,"err_dec":28,"err_ave":8,"ppm":293.2,"jours":49,"prod_j":556.9,"score":86.2,"rang":8,"prod_jan":3093,"prod_fev":0,"prod_mar":15210,"quota_jan":95.5,"quota_fev":91.3,"quota_mar":93.4},{"id":"ALVES_GOMES","nom":"ALVES_GOMES","prenom":"HUGO","matricule":"XXX","prod":5507,"heures":92.9,"hsup":2.1,"quota":0.0,"err_dec":55,"err_ave":4,"ppm":726.3,"jours":13,"prod_j":423.6,"score":25.0,"rang":19,"prod_jan":0,"prod_fev":0,"prod_mar":10536,"quota_jan":0,"quota_fev":0,"quota_mar":80.3}]};
+
+// ══════════════════════════════════════════════════════════════
+// APP LOGIC
+// ══════════════════════════════════════════════════════════════
+const app = document.getElementById('app');
+
+// ⬇ URL FIXE — Ton site GitHub Pages
+const BASE_URL = 'https://legros123.github.io/pick-pack-dashboard/';
+
+function getScoreClass(score) {
+  if (score >= 80) return 'score-green';
+  if (score >= 60) return 'score-amber';
+  return 'score-red';
+}
+
+function getScoreEmoji(score) {
+  if (score >= 90) return '🟢';
+  if (score >= 80) return '🟡';
+  if (score >= 60) return '🟠';
+  return '🔴';
+}
+
+// ── ROUTING ──
+function route() {
+  const params = new URLSearchParams(window.location.search);
+  const opId = params.get('op');
+  
+  if (opId) {
+    const op = DATA.operators.find(o => o.id === opId.toUpperCase());
+    if (op) {
+      renderOperator(op);
+    } else {
+      renderError();
+    }
+  } else {
+    renderAdmin();
+  }
+}
+
+// ── ADMIN PAGE ──
+function renderAdmin() {
+  const sorted = [...DATA.operators].sort((a,b) => a.rang - b.rang);
+  
+  app.innerHTML = `
+    <div class="header">
+      <div class="header-logo">Pick & Pack</div>
+      <h1>QR Codes Opérateurs</h1>
+      <div class="header-sub">Rexel Champigneulles · CLR · ${DATA.team.nb_operateurs} opérateurs actifs</div>
+    </div>
+
+    <div class="card no-print" style="margin-bottom:16px">
+      <div class="card-title">Mode d'emploi</div>
+      <p style="font-size:13px;color:var(--text-muted);line-height:1.5">
+        1. Imprimer cette page (Ctrl+P)<br>
+        2. Découper chaque QR code<br>
+        3. Plastifier et distribuer<br>
+        4. L'opérateur scanne → voit SES stats
+      </p>
+    </div>
+
+    <div class="admin-grid" id="admin-grid">
+      ${sorted.map(op => `
+        <div class="admin-card" onclick="showOp('${op.id}')">
+          <div class="admin-card-name">${op.prenom} ${op.nom}</div>
+          <div class="admin-card-mat">MAT. ${op.matricule}</div>
+          <div id="qr-${op.id}" style="display:flex;justify-content:center"></div>
+          <div class="admin-card-score ${getScoreClass(op.score)}">${getScoreEmoji(op.score)} ${op.score}/100</div>
+          <div class="admin-card-rank">Rang ${op.rang}/${DATA.operators.length}</div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="footer">
+      Données cumulées Jan–Mar 2026 · Accès confidentiel par QR code individuel
+    </div>
+  `;
+
+  // Generate QR codes
+  sorted.forEach(op => {
+    const container = document.getElementById(`qr-${op.id}`);
+    if (container) {
+      new QRCode(container, {
+        text: `${BASE_URL}?op=${op.id}`,
+        width: 110,
+        height: 110,
+        colorDark: '#0f172a',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    }
+  });
+}
+
+function showOp(id) {
+  window.location.search = `?op=${id}`;
+}
+
+// ── OPERATOR DASHBOARD ──
+function renderOperator(op) {
+  const team = DATA.team;
+  const maxProdJ = Math.max(op.prod_j, team.avg_prod_j) * 1.15;
+  const maxQuota = Math.max(op.quota, team.avg_quota) * 1.15;
+  
+  // Monthly chart max
+  const months = [op.prod_jan, op.prod_fev, op.prod_mar];
+  const maxMonth = Math.max(...months, 1);
+
+  app.innerHTML = `
+    <button class="back-btn" onclick="window.location.search=''">← Retour admin</button>
+
+    <div class="header">
+      <div class="header-logo">Pick & Pack · Suivi Individuel</div>
+      <h1>Mon Tableau de Bord</h1>
+      <div class="header-sub">Données cumulées · Jan–Mar 2026</div>
+    </div>
+
+    <!-- BADGE OPÉRATEUR -->
+    <div class="op-badge">
+      <div class="op-name">${op.prenom} ${op.nom}</div>
+      <div class="op-mat">Matricule ${op.matricule}</div>
+      <div class="op-score-big ${getScoreClass(op.score)}">${op.score}<span style="font-size:20px;opacity:0.6">/100</span></div>
+      <div class="op-rank">Classement : <strong>${op.rang}</strong> sur ${DATA.operators.length}</div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab(this, 'tab-perso')">Ma Prod</button>
+      <button class="tab" onclick="switchTab(this, 'tab-compare')">vs Équipe</button>
+      <button class="tab" onclick="switchTab(this, 'tab-equipe')">Équipe</button>
+    </div>
+
+    <!-- TAB: MA PROD -->
+    <div id="tab-perso">
+      <div class="card">
+        <div class="card-title">Mes indicateurs</div>
+        <div class="kpi-grid">
+          <div class="kpi">
+            <div class="kpi-value" style="color:var(--teal)">${op.prod.toLocaleString('fr')}</div>
+            <div class="kpi-label">Lignes produites</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-value">${op.prod_j.toFixed(0)}</div>
+            <div class="kpi-label">Prod / jour</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-value ${op.quota >= 90 ? 'score-green' : op.quota >= 70 ? 'score-amber' : 'score-red'}">${op.quota.toFixed(1)}%</div>
+            <div class="kpi-label">Quota moyen</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-value">${op.heures.toFixed(0)}h</div>
+            <div class="kpi-label">Heures travaillées</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Qualité</div>
+        <div class="kpi-grid">
+          <div class="kpi">
+            <div class="kpi-value" style="color:var(--amber)">${op.err_dec}</div>
+            <div class="kpi-label">Err. décelées</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-value" style="color:${op.err_ave > 5 ? 'var(--red)' : 'var(--green)'}">${op.err_ave}</div>
+            <div class="kpi-label">Err. avérées</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-value ${op.ppm > 300 ? 'score-red' : op.ppm > 150 ? 'score-amber' : 'score-green'}">${op.ppm.toFixed(0)}</div>
+            <div class="kpi-label">PPM</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-value">${op.jours}</div>
+            <div class="kpi-label">Jours travaillés</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Évolution mensuelle (lignes)</div>
+        <div class="month-bars">
+          ${['Janv', 'Févr', 'Mars'].map((m, i) => {
+            const val = months[i];
+            const h = val > 0 ? Math.max((val / maxMonth) * 100, 5) : 3;
+            const color = i === 2 ? 'var(--teal)' : 'rgba(148,163,184,0.4)';
+            return `
+              <div class="month-col">
+                <div class="month-bar" style="height:${h}%;background:${color}">
+                  <div class="month-bar-val">${val > 0 ? val.toLocaleString('fr') : '—'}</div>
+                </div>
+                <div class="month-label">${m}</div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: VS ÉQUIPE -->
+    <div id="tab-compare" style="display:none">
+      <div class="card">
+        <div class="card-title">Production / jour</div>
+        <div class="bar-compare">
+          <div class="bar-row">
+            <div class="bar-label">Moi</div>
+            <div class="bar-track">
+              <div class="bar-fill bar-perso" style="width:${(op.prod_j/maxProdJ*100).toFixed(1)}%">
+                <span class="bar-fill-val">${op.prod_j.toFixed(0)} lig/j</span>
+              </div>
+            </div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">Équipe</div>
+            <div class="bar-track">
+              <div class="bar-fill bar-equipe" style="width:${(team.avg_prod_j/maxProdJ*100).toFixed(1)}%">
+                <span class="bar-fill-val">${team.avg_prod_j.toFixed(0)} lig/j</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Quota moyen %</div>
+        <div class="bar-compare">
+          <div class="bar-row">
+            <div class="bar-label">Moi</div>
+            <div class="bar-track">
+              <div class="bar-fill bar-perso" style="width:${Math.min((op.quota/maxQuota*100), 100).toFixed(1)}%">
+                <span class="bar-fill-val">${op.quota.toFixed(1)}%</span>
+              </div>
+            </div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">Équipe</div>
+            <div class="bar-track">
+              <div class="bar-fill bar-equipe" style="width:${Math.min((team.avg_quota/maxQuota*100), 100).toFixed(1)}%">
+                <span class="bar-fill-val">${team.avg_quota.toFixed(1)}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">PPM (erreurs par million)</div>
+        <div class="bar-compare">
+          ${(() => {
+            const maxPPM = Math.max(op.ppm, team.avg_ppm) * 1.15 || 1;
+            return `
+              <div class="bar-row">
+                <div class="bar-label">Moi</div>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:${(op.ppm/maxPPM*100).toFixed(1)}%;background:${op.ppm > team.avg_ppm ? 'var(--red)' : 'var(--green)'}">
+                    <span class="bar-fill-val">${op.ppm.toFixed(0)}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-label">Équipe</div>
+                <div class="bar-track">
+                  <div class="bar-fill bar-equipe" style="width:${(team.avg_ppm/maxPPM*100).toFixed(1)}%">
+                    <span class="bar-fill-val">${team.avg_ppm.toFixed(0)}</span>
+                  </div>
+                </div>
+              </div>
+            `;
+          })()}
+        </div>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:8px;text-align:center">⬇ Plus bas = meilleur</p>
+      </div>
+    </div>
+
+    <!-- TAB: ÉQUIPE -->
+    <div id="tab-equipe" style="display:none">
+      <div class="card">
+        <div class="card-title">Indicateurs équipe (${team.nb_operateurs} opérateurs)</div>
+        <div class="team-stat">
+          <span class="team-stat-label">Prod moyenne / jour</span>
+          <span class="team-stat-val">${team.avg_prod_j.toFixed(0)} lig/j</span>
+        </div>
+        <div class="team-stat">
+          <span class="team-stat-label">Quota moyen</span>
+          <span class="team-stat-val">${team.avg_quota.toFixed(1)}%</span>
+        </div>
+        <div class="team-stat">
+          <span class="team-stat-label">Score moyen</span>
+          <span class="team-stat-val">${team.avg_score.toFixed(1)}/100</span>
+        </div>
+        <div class="team-stat">
+          <span class="team-stat-label">PPM moyen</span>
+          <span class="team-stat-val">${team.avg_ppm.toFixed(0)}</span>
+        </div>
+        <div class="team-stat">
+          <span class="team-stat-label">Erreurs décelées (total)</span>
+          <span class="team-stat-val" style="color:var(--amber)">${team.total_err_dec}</span>
+        </div>
+        <div class="team-stat">
+          <span class="team-stat-label">Erreurs avérées (total)</span>
+          <span class="team-stat-val" style="color:var(--red)">${team.total_err_ave}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      Données confidentielles · Accès personnel via QR code<br>
+      Aucune donnée individuelle tierce accessible
+    </div>
+  `;
+}
+
+function switchTab(btn, tabId) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  ['tab-perso', 'tab-compare', 'tab-equipe'].forEach(id => {
+    document.getElementById(id).style.display = id === tabId ? 'block' : 'none';
+  });
+}
+
+function renderError() {
+  app.innerHTML = `
+    <div class="error-page">
+      <div class="error-icon">🔒</div>
+      <div class="error-title">Opérateur non trouvé</div>
+      <div class="error-msg">Le QR code ne correspond à aucun opérateur actif.<br>Contactez votre superviseur.</div>
+    </div>
+  `;
+}
+
+// ── INIT ──
+route();
+</script>
+</body>
+</html>
